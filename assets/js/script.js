@@ -48,7 +48,7 @@ var saveTasks = function() {
 
 
 
-// modal was triggered
+// modal was 
 $("#task-form-modal").on("show.bs.modal", function() {
   // clear values
   $("#modalTaskDescription, #modalDueDate").val("");
