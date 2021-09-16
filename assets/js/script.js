@@ -3,18 +3,19 @@ var tasks = {};
 var createTask = function(taskText, taskDate, taskList) {
   // create elements that make up a task item
   var taskLi = $("<li>").addClass("list-group-item");
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(taskDate);
-  var taskP = $("<p>")
-    .addClass("m-1")
-    .text(taskText);
-
+  var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(taskDate);
+    
+  var taskP = $("<p>").addClass("m-1").text(taskText);
+    
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
+  
+  //check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
+
 };
 
 var loadTasks = function() {
@@ -42,6 +43,31 @@ var loadTasks = function() {
 
 var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
+};
+
+var auditTask = function(taskEl) {
+  //get date from task element
+  var date = $(taskEl).find("span").text().trim();
+  //ensure it worked
+  console.log(date);
+
+  //convert to moment object at 5:00pm
+  var time = moment(date, "L").set("hour", 17);
+
+  //this should print out an object for the value of the date variable, but at 5:00pm of that date
+  console.log(time);
+
+  //remove any old classes from the element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  //apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+   $(taskEl).addClass("list-group-item-danger"); 
+  }
+  //apply new class if task is near/over due date
+  else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
 };
 
 // enable draggable/sortable feature on list-group elements
@@ -114,6 +140,11 @@ $("#trash").droppable({
   }
 });
 
+//convert text filed into a jquery date pickier
+$("modalDueDate").datepicker({
+  //force user to select a future date
+  minDate: 1
+});
 
 // modal was triggered
 $("#task-form-modal").on("show.bs.modal", function() {
@@ -149,6 +180,7 @@ $("#task-form-modal .btn-primary").click(function() {
   }
 });
 
+
 // task text was clicked
 $(".list-group").on("click", "p", function() {
   // get current text of p element
@@ -165,22 +197,26 @@ $(".list-group").on("click", "p", function() {
 });
 
 // editable field was un-focused
-$(".list-group").on("blur", "textarea", function() {
+$(".list-group").on("change", "input[type='text'", function() {
   // get current value of textarea
   var text = $(this).val();
 
   // get status type and position in the list
-  var status = $(this)
-    .closest(".list-group")
-    .attr("id")
-    .replace("list-", "");
-  var index = $(this)
-    .closest(".list-group-item")
-    .index();
-
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
+    
+  var index = $(this).closest(".list-group-item").index();
+    
   // update task in array and re-save to localstorage
   tasks[status][index].text = text;
   saveTasks();
+
+  var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(date);
+  $(this).replaceWith(taskSpan);
+
+  //pass task's <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
+
+
 
   // recreate p element
   var taskP = $("<p>")
@@ -199,11 +235,18 @@ $(".list-group").on("click", "span", function() {
     .trim();
 
   // create new input element
-  var dateInput = $("<input>")
-    .attr("type", "text")
-    .addClass("form-control")
-    .val(date);
+  var dateInput = $("<input>").attr("type", "text").addClass("form-control").val(date);
+    
   $(this).replaceWith(dateInput);
+
+  //enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function () {
+      //when calendar is closed, force a "change" event on the 'dateInput'
+      $(this).trigger("change");
+    }
+  })
 
   // automatically bring up the calendar
   dateInput.trigger("focus");
@@ -231,6 +274,7 @@ $(".list-group").on("change", "input[type='text']", function() {
     .addClass("badge badge-primary badge-pill")
     .text(date);
     $(this).replaceWith(taskSpan);
+    auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 // remove all tasks
@@ -242,6 +286,8 @@ $("#remove-tasks").on("click", function() {
   console.log(tasks);
   saveTasks();
 });
+
+
 
 // load tasks for the first time
 loadTasks();
